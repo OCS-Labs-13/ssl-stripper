@@ -15,18 +15,23 @@ CONFIG = {
 
 
 def parse_args():
-    args = [[sys.argv[i], sys.argv[i + 1]] for i in range(1, len(sys.argv) - 1) if sys.argv[i].startswith("-")]
+    # Catch help and version arguments
+    if sys.argv[1:].__contains__("-h") or sys.argv[1:].__contains__("--help"):
+        print("Automated SSL Stripper.")
+        print("Usage: python3 main.py [options]")
+        sys.exit(0)
+    if sys.argv[1:].__contains__("-v") or sys.argv[1:].__contains__("--version"):
+        print(f"Version: {VERSION}")
+        sys.exit(0)
+
+    args = [[sys.argv[i], sys.argv[i + 1]] for i in range(1, len(sys.argv) - 1)
+            if sys.argv[i].startswith("-")
+            and sys.argv[i + 1] != "-h" and sys.argv[i + 1] != "--help"
+            and sys.argv[i + 1] != "-v" and sys.argv[i + 1] != "--version"]
 
     try:
         for i, arg in enumerate(args):
-            if arg[0] == "-h" or arg[0] == "--help":
-                print("Usage: python main.py")
-                print("Prints the TU/e logo in ASCII art.")
-                sys.exit(0)
-            elif arg[0] == "-v" or arg[0] == "--version":
-                print("ASCII Art TU/e logo v1.0")
-                sys.exit(0)
-            elif arg[0] == "-t":
+            if arg[0] == "-t":
                 CONFIG["arp"]["target"] = arg[1]
             elif arg[0] == "-aI":
                 value = int(arg[1])
@@ -54,7 +59,7 @@ def print_art():
                             
     """
 
-    dash = """
+    seperator = """
     
         
         
@@ -74,7 +79,7 @@ def print_art():
                                            |_|    |_|                
     """
 
-    art = '\n'.join(' '.join(pair) for pair in zip(*(s.split('\n') for s in (logo, dash, title))))
+    art = '\n'.join(' '.join(pair) for pair in zip(*(s.split('\n') for s in (logo, seperator, title))))
 
     print(colored(art, "light_red"))
 
