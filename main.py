@@ -108,6 +108,9 @@ def start():
 
     # RUN ADDITIONAL SCRIPTS HERE
 
+    while True:  # Keep the program running
+        pass
+
 
 if __name__ == '__main__':
     parse_args()

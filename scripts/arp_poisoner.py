@@ -42,6 +42,10 @@ def start(target, interval, gateway=None):
     t1 = threading.Thread(target=lambda: arp_poison(target, gateway, interval))
     t2 = threading.Thread(target=lambda: arp_poison(gateway, target, interval))
 
+    # Set as daemon threads to allow main thread to exit
+    t1.daemon = True
+    t2.daemon = True
+
     # Simultaneously run the threads
     t1.start()
     t2.start()
