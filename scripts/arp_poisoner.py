@@ -17,7 +17,7 @@ def arp_poison(target_ip, gateway_ip, interval):
     # Indefinitely send packets
     while True:
         send(arp, verbose=0)
-        print(colored(f"[ARP] Sent packet to {target_ip} from {gateway_ip}", "light_grey"))
+        print(colored("[ARP] Sent packet to {} from {}".format(target_ip, gateway_ip), "light_grey"))
         time.sleep(interval)
 
 

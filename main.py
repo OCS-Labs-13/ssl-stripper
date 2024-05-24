@@ -21,7 +21,7 @@ def parse_args():
         print("Usage: python3 main.py [options]")
         sys.exit(0)
     if sys.argv[1:].__contains__("-v") or sys.argv[1:].__contains__("--version"):
-        print(f"Version: {VERSION}")
+        print("Version: {}".format(VERSION))
         sys.exit(0)
 
     args = [[sys.argv[i], sys.argv[i + 1]] for i in range(1, len(sys.argv) - 1)
@@ -36,15 +36,15 @@ def parse_args():
             elif arg[0] == "-aI":
                 value = int(arg[1])
                 if value < 1:
-                    print(f"Error: Invalid value for argument '{arg[0]}': '{arg[1]}'")
+                    print("Error: Invalid value for argument '{}': '{}'".format(arg[0], arg[1]))
                     sys.exit(1)
                 CONFIG["arp"]["interval"] = value
             else:
-                print(f"Error: Unknown argument '{arg[0]}': '{arg[1]}'")
+                print("Error: Unknown argument '{}': '{}'".format(arg[0], arg[1]))
                 print("Use -h or --help for usage information.")
                 sys.exit(1)
     except ValueError:
-        print(f"Error: Invalid value for argument '{args[i][0]}': '{args[i][1]}'")
+        print("Error: Invalid value for argument '{}': '{}'".format(args[i][0], args[i][1]))
         sys.exit(1)
 
 
@@ -87,12 +87,10 @@ def print_art():
 def print_welcome():
     print_art()
 
-    print(f"{colored("Automated SSL Stripper", "light_green")} by "
-          f"{colored("group 13", "blue")} made for the course "
-          f"{colored("2IC80 - Lab on Offensive Computer Security", "red")}.")
-    print(f"Version: {VERSION}")
-
-    print("\nUse -h or --help for usage information.\n")
+    print(colored("Automated SSL Stripper", "light_green") + " by " +
+          colored("group 13", "blue") + " made for the course " +
+          colored("2IC80 - Lab on Offensive Computer Security", "red") + ".")
+    print("Version: {}\n".format(VERSION))
 
 
 def start():
