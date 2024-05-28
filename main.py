@@ -39,6 +39,8 @@ def parse_args():
                     print("Error: Invalid value for argument '{}': '{}'".format(arg[0], arg[1]))
                     sys.exit(1)
                 CONFIG["arp"]["interval"] = value
+            elif arg[0] == "lT":
+                CONFIG["arp"]["gateway"] = arg[1]
             else:
                 print("Error: Unknown argument '{}': '{}'".format(arg[0], arg[1]))
                 print("Use -h or --help for usage information.")
