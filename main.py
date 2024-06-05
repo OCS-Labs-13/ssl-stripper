@@ -1,7 +1,7 @@
 import sys
 import signal
 from termcolor import colored
-import scripts.arp_poisoner as arp_poisoner
+from scripts.arp_poisoner import ArpPoisoner
 
 VERSION = "1.0"
 
@@ -106,7 +106,8 @@ def start():
     ignore_cache = CONFIG["arp"]["ignore_cache"]
 
     # Run ARP poisoning script with configured parameters
-    arp_poisoner.start(target_ip, poisoning_interval, gateway_ip, ignore_cache)
+    arp_poisoner = ArpPoisoner(target_ip, gateway_ip, poisoning_interval, ignore_cache)
+    arp_poisoner.start()
 
     # RUN ADDITIONAL SCRIPTS HERE
 
