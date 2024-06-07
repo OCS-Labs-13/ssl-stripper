@@ -52,8 +52,8 @@ if __name__ == '__main__':
 	try:
 		hostDict = {
 			b"google.com.": "10.0.123.7",
-			b"facebook.com.": "10.0.123.7",
-			b"youtube.com": "10.0.123.7"
+			# b"facebook.com.": "10.0.123.7",
+			# b"youtube.com": "10.0.123.7"
 		}
 		queueNum = 1
 		log.basicConfig(format='%(asctime)s - %(message)s', 

