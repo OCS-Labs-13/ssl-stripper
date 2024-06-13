@@ -8,8 +8,7 @@ from termcolor import colored
 
 
 def get_gateway_ip():
-    # Determine the OS
-    platform_id = sys.platform
+    platform_id = sys.platform  # Determine the OS
 
     if platform_id == "win32":  # Windows
         return os.popen("ipconfig | findstr Default").read().split()[-1]
@@ -83,5 +82,4 @@ class ArpPoisoner:
         # Simultaneously run the threads
         t1.start()
         t2.start()
-
         print(colored("Started ARP poisoning.", "light_grey"))
