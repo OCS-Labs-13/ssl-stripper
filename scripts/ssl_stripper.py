@@ -152,8 +152,3 @@ class SslStripper:
 
     def stop(self):
         self.server.shutdown()
-
-
-if __name__ == '__main__':
-    ssl_stripper = SslStripper()
-    ssl_stripper.start()

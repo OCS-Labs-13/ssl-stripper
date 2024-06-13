@@ -8,8 +8,7 @@ from termcolor import colored
 
 
 def get_gateway_ip():
-    # Determine the OS
-    platform_id = sys.platform
+    platform_id = sys.platform  # Determine the OS
 
     if platform_id == "win32":  # Windows
         return os.popen("ipconfig | findstr Default").read().split()[-1]
@@ -51,6 +50,7 @@ class ArpPoisoner:
         # Send ARP request and listen for valid response
         while True:
             response = srp1(broadcast_arp, verbose=False)
+            print("[ARP] Getting MAC address of target...")
             if response.psrc == self.target:
                 return response.hwsrc
             else:

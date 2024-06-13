@@ -2,6 +2,7 @@ import sys
 import signal
 from termcolor import colored
 from scripts.arp_poisoner import ArpPoisoner
+from scripts.ssl_stripper import SslStripper
 
 VERSION = "1.0"
 
@@ -11,6 +12,10 @@ CONFIG = {
         "gateway": None,
         "interval": 30,  # Interval in seconds between ARP requests for ARP spoofing
         "ignore_cache": False  # Ignore ARP cache when looking up MAC addresses
+    },
+    "ssl": {
+        "disable": False,  # Disable SSL stripping
+        "port": 80  # Port to listen for spoofed webserver traffic
     }
 }
 
@@ -42,6 +47,10 @@ def parse_args():
                 CONFIG["arp"]["interval"] = value
             elif arg[0] == "-aC":
                 CONFIG["arp"]["ignore_cache"] = True
+            elif arg[0] == "-sD":
+                CONFIG["ssl"]["disable"] = True
+            elif arg[0] == "-sP":
+                CONFIG["ssl"]["port"] = int(arg[1])
             else:
                 print("Error: Unknown argument '{}': '{}'".format(arg[0], arg[1]))
                 print("Use -h or --help for usage information.")
@@ -110,6 +119,14 @@ def start():
     arp_poisoner.start()
 
     # RUN ADDITIONAL SCRIPTS HERE
+    
+    disable_ssl = CONFIG["ssl"]["disable"]
+
+    if not disable_ssl:
+        ssl_port = CONFIG["ssl"]["port"]
+
+        ssl_stripper = SslStripper(ssl_port)
+        ssl_stripper.start()
 
     while True:  # Keep the program running
         pass
