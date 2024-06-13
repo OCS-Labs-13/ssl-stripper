@@ -8,7 +8,6 @@ from urllib.parse import urlparse
 import requests
 from termcolor import colored
 
-
 class SslStripper:
     def __init__(self, port=80):
         self.port = port

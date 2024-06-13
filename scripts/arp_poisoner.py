@@ -50,7 +50,6 @@ class ArpPoisoner:
         # Send ARP request and listen for valid response
         while True:
             response = srp1(broadcast_arp, verbose=False)
-            print("[ARP] Getting MAC address of target...")
             if response.psrc == self.target:
                 return response.hwsrc
             else:
@@ -83,5 +82,4 @@ class ArpPoisoner:
         # Simultaneously run the threads
         t1.start()
         t2.start()
-
         print(colored("Started ARP poisoning.", "light_grey"))
