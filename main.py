@@ -133,9 +133,9 @@ def start():
 
     # Run ARP poisoning script with configured parameters
     arp_poisoner = ArpPoisoner(target_ip, gateway_ip, poisoning_interval, ignore_cache)
-    t1 = threading.Thread(target=lambda: arp_poisoner.start())
-    t1.daemon = True
-    t1.start()  
+    arp_thread = threading.Thread(target=lambda: arp_poisoner.start())
+    arp_thread.daemon = True
+    arp_thread.start()
 
     disable_dns = CONFIG["dns"]["disable"]
 
@@ -144,9 +144,9 @@ def start():
         dns_hosts = CONFIG["dns"]["hosts"]
 
         dns_poisoner = DnsSpoofer(dns_hosts)
-        t2 = threading.Thread(target=lambda: dns_poisoner.start())
-        t2.daemon = True
-        t2.start()
+        dns_thread = threading.Thread(target=lambda: dns_poisoner.start())
+        dns_thread.daemon = True
+        dns_thread.start()
 
         disable_ssl = CONFIG["ssl"]["disable"]
 
@@ -155,7 +155,9 @@ def start():
             logging = CONFIG["ssl"]["logging"]
 
             ssl_stripper = SslStripper(ssl_port, logging)
-            ssl_stripper.start()
+            ssl_thread = threading.Thread(target=lambda: ssl_stripper.start())
+            ssl_thread.daemon = True
+            ssl_thread.start()
     
     while True:  # Keep the program running
         pass
