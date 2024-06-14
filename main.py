@@ -16,7 +16,7 @@ CONFIG = {
         "ignore_cache": False  # Ignore ARP cache when looking up MAC addresses
     },
     "dns": {
-        "disable": False,  # Disable DNS spoofing
+        "disable": True,  # Disable DNS spoofing
         "hosts": None
     },
     "ssl": {
@@ -61,6 +61,7 @@ def parse_args():
                 for j in content:
                     hosts_list.append(j.rstrip('\n'))
                 CONFIG["dns"]["hosts"] = hosts_list
+                CONFIG["dns"]["disable"] = False
             elif arg[0] == "-sD":
                 CONFIG["ssl"]["disable"] = True
             elif arg[0] == "-sL":
