@@ -131,31 +131,19 @@ class SslStripper:
             s.close()
 
     def open_port(self):
-        platform_id = sys.platform  # Determine the OS
-
-        if platform_id == "win32":  # Windows
-            # Command to open a port through Windows Firewall
-            cmd = f"netsh advfirewall firewall add rule name=\"Allow Port {self.port}\" dir=in action=allow protocol=TCP localport={self.port}"
-            os.system(cmd)  # Execute command
-        else:  # Linux
-            cmd = f"sudo ufw allow {self.port}/tcp"  # Command to open a port through UFW
-            os.system(cmd)  # Execute command
+        cmd = f"sudo ufw allow {self.port}/tcp"  # Command to open a port through UFW
+        os.system(cmd)  # Execute command
 
     def close_port(self):
-        platform_id = sys.platform  # Determine the OS
-
-        if platform_id == "win32":  # Windows
-            cmd = f"netsh advfirewall firewall delete rule name=\"Allow Port {self.port}\""
-            os.system(cmd)
-        else:  # Linux
-            cmd = f"sudo ufw deny {self.port}/tcp"  # Command to close a port through UFW
-            os.system(cmd)  # Execute command
+        cmd = f"sudo ufw deny {self.port}/tcp"  # Command to close a port through UFW
+        os.system(cmd)  # Execute command
 
     def start(self):
         if self.is_port_in_use():
             print(colored(f"[SSL] Error: Port {self.port} is already in use. Terminate the process and retry.", "red"))
             return
 
+        # TODO: Fix this
         # while not self.is_port_open():
         #     print(colored(f"[SSL] Port {self.port} is closed. Opening port and retrying...", "light_grey"))
         #     self.open_port()

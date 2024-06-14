@@ -123,25 +123,27 @@ def print_welcome():
 
 
 def start():
-    # Register signal handler
     try:
-        print("Starting...")
         target_ip = CONFIG["arp"]["target"]
         poisoning_interval = CONFIG["arp"]["interval"]
         gateway_ip = CONFIG["arp"]["gateway"]
         ignore_cache = CONFIG["arp"]["ignore_cache"]
 
-        # Run ARP poisoning script with configured parameters
+        # Set configuration for ARP poisoning
         arp_poisoner = ArpPoisoner(target_ip, gateway_ip, poisoning_interval, ignore_cache)
-        signal.signal(signal.SIGINT, lambda sig, frame: arp_poisoner.cleanup() or sys.exit(0))
+
+        # Register signal handler
+        signal.signal(signal.SIGINT, lambda sig, frame: arp_poisoner.undo() or sys.exit(0))
+
+        # Run ARP poisoning script with configured parameters
         arp_poisoner.start()
 
         disable_dns = CONFIG["dns"]["disable"]
 
-        # RUN ADDITIONAL SCRIPTS HERE
         # Run DNS poisoning script with configured parameters
         if not disable_dns:
             dns_hosts = CONFIG["dns"]["hosts"]
+
             dns_poisoner = DnsSpoofer(dns_hosts)
             dns_thread = threading.Thread(target=lambda: dns_poisoner.start())
             dns_thread.daemon = True
@@ -149,19 +151,20 @@ def start():
 
             disable_ssl = CONFIG["ssl"]["disable"]
 
+            # Run SSL stripping script with configured parameters
             if not disable_ssl:
                 ssl_port = CONFIG["ssl"]["port"]
                 logging = CONFIG["ssl"]["logging"]
 
                 ssl_stripper = SslStripper(ssl_port, logging)
-                ssl_thread = threading.Thread(target=lambda: ssl_stripper.start())                
+                ssl_thread = threading.Thread(target=lambda: ssl_stripper.start())
                 ssl_thread.daemon = True
                 ssl_thread.start()
 
         while True:  # Keep the program running
             pass
     except KeyboardInterrupt:
-        print("Program Interrupted")
+        print("[!] Exiting...")
 
 
 if __name__ == '__main__':
