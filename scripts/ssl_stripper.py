@@ -151,7 +151,7 @@ class SslStripper:
             return
 
         while not self.is_port_open():
-            print(colored(f"[SSL] Port {self.port} is closed. Opening port and retrying..."), "light_grey")
+            print(colored(f"[SSL] Port {self.port} is closed. Opening port and retrying...", "light_grey"))
             self.open_port()
             time.sleep(3)
 

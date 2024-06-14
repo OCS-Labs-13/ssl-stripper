@@ -1,5 +1,5 @@
 import sys
-# import signal
+import signal
 import threading
 from termcolor import colored
 from scripts.arp_poisoner import ArpPoisoner
@@ -124,7 +124,6 @@ def print_welcome():
 
 def start():
     # Register signal handler
-    # signal.signal(signal.SIGINT, lambda sig, frame: print("Terminating program...") or sys.exit(0))
     try:
         target_ip = CONFIG["arp"]["target"]
         poisoning_interval = CONFIG["arp"]["interval"]
@@ -133,6 +132,7 @@ def start():
 
         # Run ARP poisoning script with configured parameters
         arp_poisoner = ArpPoisoner(target_ip, gateway_ip, poisoning_interval, ignore_cache)
+        signal.signal(signal.SIGINT, lambda sig, frame: arp_poisoner.cleanup() or sys.exit(0))
         arp_poisoner.start()
 
         disable_dns = CONFIG["dns"]["disable"]
@@ -160,9 +160,7 @@ def start():
         while True:  # Keep the program running
             pass
     except KeyboardInterrupt:
-        print("Program Interupted")
-        arp_poisoner.close_threads()
-        arp_poisoner.restore_arp_table()
+        print("Program Interrupted")
 
 
 if __name__ == '__main__':
