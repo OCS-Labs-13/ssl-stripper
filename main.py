@@ -125,6 +125,7 @@ def print_welcome():
 def start():
     # Register signal handler
     try:
+        print("Starting...")
         target_ip = CONFIG["arp"]["target"]
         poisoning_interval = CONFIG["arp"]["interval"]
         gateway_ip = CONFIG["arp"]["gateway"]
@@ -153,7 +154,7 @@ def start():
                 logging = CONFIG["ssl"]["logging"]
 
                 ssl_stripper = SslStripper(ssl_port, logging)
-                ssl_thread = threading.Thread(target=lambda: ssl_stripper.start())
+                ssl_thread = threading.Thread(target=lambda: ssl_stripper.start())                
                 ssl_thread.daemon = True
                 ssl_thread.start()
 

