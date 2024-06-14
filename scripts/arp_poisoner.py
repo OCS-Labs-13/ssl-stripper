@@ -22,7 +22,7 @@ def get_mac(ip):
 class ArpPoisoner:
     def __init__(self, target, gateway, interval, ignore_cache):
         if target is None:
-            print("[ARP] Error: Unspecified target.")
+            print(colored("[ARP] Error: Unspecified target.", "red"))
             sys.exit(1)
 
         if gateway is None:
