@@ -42,8 +42,9 @@ def print_help():
 
     print("Options:")
     print("  -t <target>          Target IP address to ARP poison. Required.")
+    print("  -g <gateway>         Gateway IP address to ARP poison. Default: known gateway IP of machine.")
     print("  -aI <interval>       Interval between ARP requests in seconds. Default: 30.")
-    print("  -aC                  Ignore ARP cache when looking up MAC addresses.")
+    print("  -aC                  Ignore ARP cache when looking up MAC addresses of the target.")
     print("  -d <file>            File containing DNS hosts to spoof. Leave empty to disable DNS spoofing.")
     print("  -dt <target>         Target IP address to redirect DNS requests to. Default: own IP.")
     print("  -sD                  Disable SSL stripping. Default: false.")
@@ -69,6 +70,8 @@ def parse_args():
         for i, arg in enumerate(args):
             if arg[0] == "-t":
                 CONFIG["arp"]["target"] = arg[1]
+            if arg[0] == "-g":
+                CONFIG["arp"]["gateway"] = arg[1]
             elif arg[0] == "-aI":
                 value = int(arg[1])
                 if value < 1:
@@ -146,8 +149,8 @@ def print_welcome():
 def start():
     try:
         target_ip = CONFIG["arp"]["target"]
-        poisoning_interval = CONFIG["arp"]["interval"]
         gateway_ip = CONFIG["arp"]["gateway"]
+        poisoning_interval = CONFIG["arp"]["interval"]
         ignore_cache = CONFIG["arp"]["ignore_cache"]
 
         # Set configuration for ARP poisoning
