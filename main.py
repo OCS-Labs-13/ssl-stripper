@@ -28,11 +28,33 @@ CONFIG = {
 }
 
 
+def print_title():
+    print(colored("Automated SSL Stripper", "light_green") + " by " +
+          colored("group 13", "blue") + " made for the course " +
+          colored("2IC80 - Lab on Offensive Computer Security", "red") + ".")
+    print("Version: {}\n".format(VERSION))
+
+
+def print_help():
+    print_title()
+
+    print("Usage: python3 main.py [options]\n")
+
+    print("Options:")
+    print("  -t <target>          Target IP address to ARP poison. Required.")
+    print("  -aI <interval>       Interval between ARP requests in seconds. Default: 30.")
+    print("  -aC                  Ignore ARP cache when looking up MAC addresses.")
+    print("  -d <file>            File containing DNS hosts to spoof. Leave empty to disable DNS spoofing.")
+    print("  -dt <target>         Target IP address to redirect DNS requests to. Default: own IP.")
+    print("  -sD                  Disable SSL stripping. Default: false.")
+    print("  -sL                  Disable logging of SSL requests. Default: false.")
+    print("  -sP <port>           Port to listen for spoofed webserver traffic. Default: 80.")
+
+
 def parse_args():
     # Catch help and version arguments
     if sys.argv[1:].__contains__("-h") or sys.argv[1:].__contains__("--help"):
-        print("Automated SSL Stripper.")
-        print("Usage: python3 main.py [options]")
+        print_help()
         sys.exit(0)
     if sys.argv[1:].__contains__("-v") or sys.argv[1:].__contains__("--version"):
         print("Version: {}".format(VERSION))
@@ -118,11 +140,7 @@ def print_art():
 
 def print_welcome():
     print_art()
-
-    print(colored("Automated SSL Stripper", "light_green") + " by " +
-          colored("group 13", "blue") + " made for the course " +
-          colored("2IC80 - Lab on Offensive Computer Security", "red") + ".")
-    print("Version: {}\n".format(VERSION))
+    print_title()
 
 
 def start():
