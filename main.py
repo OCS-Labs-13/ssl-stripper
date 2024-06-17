@@ -17,7 +17,8 @@ CONFIG = {
     },
     "dns": {
         "disable": True,  # Disable DNS spoofing
-        "hosts": None
+        "hosts": None,
+        "target": None  # IP address the packets are redirected to
     },
     "ssl": {
         "disable": False,  # Disable SSL stripping
@@ -62,6 +63,8 @@ def parse_args():
                     hosts_list.append(j.rstrip('\n'))
                 CONFIG["dns"]["hosts"] = hosts_list
                 CONFIG["dns"]["disable"] = False
+            elif arg[0] == "-dt":
+                CONFIG["dns"]["target"] = arg[1]
             elif arg[0] == "-sD":
                 CONFIG["ssl"]["disable"] = True
             elif arg[0] == "-sL":
@@ -143,8 +146,9 @@ def start():
         # Run DNS poisoning script with configured parameters
         if not disable_dns:
             dns_hosts = CONFIG["dns"]["hosts"]
+            dns_target = CONFIG["dns"]["target"]
 
-            dns_poisoner = DnsSpoofer(dns_hosts)
+            dns_poisoner = DnsSpoofer(dns_hosts, dns_target)
             dns_thread = threading.Thread(target=lambda: dns_poisoner.start())
             dns_thread.daemon = True
             dns_thread.start()
@@ -152,7 +156,7 @@ def start():
             disable_ssl = CONFIG["ssl"]["disable"]
 
             # Run SSL stripping script with configured parameters
-            if not disable_ssl:
+            if not disable_ssl and not dns_target:  # Only run SSL stripper if DNS redirects to this machine
                 ssl_port = CONFIG["ssl"]["port"]
                 logging = CONFIG["ssl"]["logging"]
 
