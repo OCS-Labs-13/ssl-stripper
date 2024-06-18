@@ -17,12 +17,12 @@ Run main.py with necessary and optional options using the following command:
 * `-t <target>`: Target IP address to ARP poison. **Required**.
 * `-g <gateway>`: Gateway IP address to ARP poison. _Default: known gateway IP of machine_.
 * `-aI <interval>`: Interval between ARP requests in seconds. _Default: 30_.
-* `-aC`: Ignore ARP cache when looking up MAC addresses of the target.
+* `-aC`: Ignore ARP cache when determining the MAC address of the target.
 * `-d <file>`: File containing DNS hosts to spoof. Leave empty to disable DNS spoofing.
-* `-dT <target>`: Target IP address to redirect DNS requests to. _Default: own IP_.
+* `-dT <target>`: Target IP address to redirect web traffic to while DNS spoofing. _Default: own IP_.
 * `-sD`: Disable SSL stripping. _Default: false_.
-* `-sL`: Disable logging of SSL requests. _Default: false_.
-* `-sP <port>`: Port to listen for spoofed webserver traffic. _Default: 80_.
+* `-sL`: Disable logging of incoming requests during SSL stripping. _Default: false_.
+* `-sP <port>`: Port to listen for spoofed web traffic. _Default: 80_.
 
 ### Video
 A video demonstration of the tool can be found [here](https://youtu.be/).
