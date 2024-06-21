@@ -25,7 +25,7 @@ Run main.py with necessary and optional options using the following command:
 * `-sP <port>`: Port to listen for spoofed web traffic. _Default: 80_.
 
 ### Video
-A video demonstration of the tool can be found [here](https://youtu.be/).
+A video demonstration of the tool can be found [here](https://www.youtube.com/watch?v=O-hLr6sU5eI).
 
 ## Development
 ### Dependencies
